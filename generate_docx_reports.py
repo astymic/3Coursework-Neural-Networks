@@ -4,6 +4,7 @@
 вирівнювання по ширині, заголовки по центру жирним 16 пт.
 """
 import os
+import copy
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -11,6 +12,48 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+TITLE_PATH = os.path.join(BASE, 'Title.docx')
+
+def insert_title_page(doc, lab_number):
+    """Вставляє титульну сторінку з Title.docx на початок документа, змінюючи номер ЛР."""
+    title_doc = Document(TITLE_PATH)
+
+    # Копіюємо секційні налаштування (поля сторінки) з Title.docx
+    # для першої секції, якщо потрібно
+
+    # Збираємо всі елементи body з шаблону титулки
+    title_elements = []
+    for element in title_doc.element.body:
+        title_elements.append(copy.deepcopy(element))
+
+    # Додаємо розрив сторінки після титулки
+    page_break_p = OxmlElement('w:p')
+    page_break_r = OxmlElement('w:r')
+    page_break_br = OxmlElement('w:br')
+    page_break_br.set(qn('w:type'), 'page')
+    page_break_r.append(page_break_br)
+    page_break_p.append(page_break_r)
+    title_elements.append(page_break_p)
+
+    # Вставляємо елементи на початок документа (перед усім існуючим контентом)
+    body = doc.element.body
+    first_child = body[0] if len(body) > 0 else None
+
+    for elem in title_elements:
+        if first_child is not None:
+            body.insert(body.index(first_child), elem)
+        else:
+            body.append(elem)
+
+    # Замінюємо номер ЛР у титулці
+    for paragraph in doc.paragraphs:
+        if 'лабораторної роботи' in paragraph.text.lower():
+            for run in paragraph.runs:
+                if '№' in run.text:
+                    # Замінюємо будь-який номер після № на потрібний
+                    import re
+                    run.text = re.sub(r'№\d+', f'№{lab_number}', run.text)
+            break  # Лише перше входження (титулка)
 
 # ───── Утиліти форматування ─────
 def set_cell_shading(cell, color_hex):
@@ -199,6 +242,7 @@ def generate_lab1():
     add_body(doc, 'Вплив кількості епох: Після перших 20-50 епох середня помилка різко падала. Далі мережа "довивчала" паттерни. Однак точність на тестовому сеті (86%) завмерла, незважаючи на падіння похибки на навчальному сеті (через неможливість 100% лінійної сепарації 3-мірного простору).')
     add_body(doc, 'Сигмоїдна функція дозволила зробити м\'яке навчання ваг порівняно з жорсткою ступінчастою функцією, і показала чудову стабільність градієнту.')
 
+    insert_title_page(doc, 1)
     out = os.path.join(lr_dir, 'Lab1_Report.docx')
     doc.save(out)
     print(f'[OK] {out}')
@@ -236,6 +280,7 @@ def generate_lab2():
     add_body(doc, '3. Особливості ReLU: ReLU дозволив прискорити прямий і зворотній прохід завдяки відсутності складної експоненти. Однак, ReLU виявився набагато чутливішим до гіперпараметрів і ініціалізації ваг. З високим learning_rate = 3.0 нейрони ставали "мертвими" (повертали нуль), тому швидкість навчання довелося зменшити до орієнтовно 0.5, а для ініціалізації ваг використати метод He Initialization.')
     add_body(doc, '4. Результат розпізнавання: Модифікована мережа розпізнала 85.5% одягу з бібліотеки Fashion MNIST, і успішно провела класифікацію випадкових зображень під час процедури візуального тестування (як продемонстровано на графіках matplotlib).')
 
+    insert_title_page(doc, 2)
     out = os.path.join(lr_dir, 'Lab2_Report.docx')
     doc.save(out)
     print(f'[OK] {out}')
@@ -295,6 +340,7 @@ def generate_lab3():
     add_body(doc, '3. Функція втрат (mean_squared_error): Стандартно в задачах багатокласової класифікації з softmax використовується categorical_crossentropy. Зміна на MSE вимагала обов\'язкового форматування міток у One-Hot вектори, щоб рахувати відстань між лінійно незалежними категоріями. MSE працює для цієї задачі, але її градієнти були меншими в порівнянні з ентропією, через що навчання було більш плавним.')
     add_body(doc, '4. Кількість епох (10, 50, 100): Чітко простежується закономірність: зі збільшенням кількості епох від 10 до 100, точність (Accuracy) лінійно зростала з 87% до 95.3%, а похибка (MSE) зменшилась утричі — з 0.0216 до 0.0075. При цьому перенавчання (Overfitting) на графіках не спостерігається — похибка на тестовій вибірці падала синхронно з похибкою на навчальній. Це ідеальна поведінка.')
 
+    insert_title_page(doc, 3)
     out = os.path.join(lr_dir, 'Lab3_Report.docx')
     doc.save(out)
     print(f'[OK] {out}')
@@ -382,6 +428,7 @@ def generate_lab4():
     add_body(doc, '2. Додаванням Gradient Clipping (np.clip(d, -1, 1, out=d)) перед кожним оновленням ваг.')
     add_body(doc, 'У результаті повністю створена з нуля рекурентна нейронна мережа на базі numpy змогла безпомилково класифікувати тип тексту. Навчання на CPU зайняло лічені секунди через невеликий розмір датасету та архітектури.')
 
+    insert_title_page(doc, 4)
     out = os.path.join(lr_dir, 'Lab4_Report.docx')
     doc.save(out)
     print(f'[OK] {out}')
@@ -441,6 +488,7 @@ def generate_lab5():
     add_body(doc, '4. DBSCAN з PCA ефективно виявив кластери довільної форми та автоматично позначив аномальні точки як шум (Outliers). Підбір гіперпараметрів eps та min_samples є критичним для якості кластеризації.')
     add_body(doc, 'Загалом, кожен метод має свої сильні та слабкі сторони, і вибір конкретного алгоритму залежить від характеру даних, їх обсягу та вимог до інтерпретованості результатів.')
 
+    insert_title_page(doc, 5)
     out = os.path.join(lr_dir, 'Lab5_Report.docx')
     doc.save(out)
     print(f'[OK] {out}')
